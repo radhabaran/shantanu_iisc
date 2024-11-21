@@ -6,7 +6,7 @@ openai>=1.10.0
 tiktoken>=0.5.2
 
 # UI Framework
-gradio==4.7.1
+gradio==4.44.1
 setuptools>=65.5.1
 
 # Data Processing & Utils
@@ -15,3 +15,6 @@ pandas==2.1.3
 
 # Environment Variables
 python-dotenv==1.0.0
+
+# langchain
+langchain-community

@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import gradio as gr
 from openai import OpenAI
+from langchain_community.chat_models import ChatOpenAI
 import os
 from config.settings import DATA_PATH
 
@@ -33,30 +34,36 @@ data['availability'] = data['availability'].fillna('N/A')
 # Create combined text
 data['combined_text'] = data['title'] + " " + data['brand'] + " " + data['description'] + " " + data['top_review']
 
-# Generate Embeddings
-def generate_embeddings(text_list):
-    embeddings = []
-    for text in text_list:
-        try:
-            response = client.embeddings.create(
-                input=[text],
-                model="text-embedding-ada-002"
-            )
-            embeddings.append(response.data[0].embedding)
-        except Exception as e:
-            print(f"Error generating embedding for text '{text}': {e}")
-    return np.array(embeddings, dtype='float32')
+# Check for existing embeddings
+EMBEDDINGS_PATH = '/workspaces/shantanu_iisc/data/embeddings.npy'
 
-print("Generating embeddings...")
-embeddings = generate_embeddings(data['combined_text'].tolist())
+if os.path.exists(EMBEDDINGS_PATH):
+    print("Loading existing embeddings...")
+    embeddings = np.load(EMBEDDINGS_PATH)
+else:
+    # Generate Embeddings
+    def generate_embeddings(text_list):
+        embeddings = []
+        for text in text_list:
+            try:
+                response = client.embeddings.create(
+                    input=[text],
+                    model="text-embedding-ada-002"
+                )
+                embeddings.append(response.data[0].embedding)
+            except Exception as e:
+                print(f"Error generating embedding for text '{text}': {e}")
+        return np.array(embeddings, dtype='float32')
+
+    print("Generating embeddings...")
+    embeddings = generate_embeddings(data['combined_text'].tolist())
+
+    # save embeddings
+    np.save(EMBEDDINGS_PATH, embeddings)
 
 # Setup FAISS Index
-# dimension = embeddings.shape[1]
-dimension = len(embeddings)
-print("***** debugging point *********")
-print("embeddings :", embeddings)
-print("embeddings.shape:",embeddings.shape )
-print("dimenesion:", dimension)
+dimension = 1536 
+
 index = faiss.IndexFlatL2(dimension)
 index.add(embeddings)
 
@@ -83,13 +90,20 @@ def generate_gpt_response(user_input, product_info):
             {"role": "system", "content": "You are a helpful assistant that provides product information."},
             {"role": "user", "content": f"Customer asked: '{user_input}'\nProduct Details:\n- Title: {product_info['title']}\n- Brand: {product_info['brand']}\n- Description: {product_info['description']}\n- Price: {product_info['final_price']}\n- Availability: {product_info['availability']}\n- Top Review: {product_info['top_review']}\nPlease provide a friendly and helpful response."}
         ]
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            max_tokens=150,
-            temperature=0.7
-        )
-        return response.choices[0].message.content.strip()
+
+        # response = client.chat.completions.create(
+        #     model="gpt-3.5-turbo",
+        #     messages=messages,
+        #     max_tokens=150,
+        #     temperature=0.7
+        # )
+        # return response.choices[0].message.content.strip()
+
+        chat_model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
+        response = chat_model.invoke(messages).content
+
+        return response
+
     except Exception as e:
         return f"I'm having trouble generating a response right now. Please try again later. (Error: {e})"
 
