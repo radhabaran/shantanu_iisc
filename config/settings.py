@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # OpenAI API Settings
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OA_API")
+os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
 if not OPENAI_API_KEY:
     print("OpenAI API key not found. Please check your environment settings.")
 

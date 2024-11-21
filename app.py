@@ -51,7 +51,12 @@ print("Generating embeddings...")
 embeddings = generate_embeddings(data['combined_text'].tolist())
 
 # Setup FAISS Index
-dimension = embeddings.shape[1]
+# dimension = embeddings.shape[1]
+dimension = len(embeddings)
+print("***** debugging point *********")
+print("embeddings :", embeddings)
+print("embeddings.shape:",embeddings.shape )
+print("dimenesion:", dimension)
 index = faiss.IndexFlatL2(dimension)
 index.add(embeddings)
 
